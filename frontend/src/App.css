@@ -1,0 +1,121 @@
+/* Khetbox Dashboard Styles */
+
+.sidebar {
+  transition: width 0.3s ease;
+}
+
+.sidebar-collapsed {
+  width: 80px;
+}
+
+.sidebar-expanded {
+  width: 256px;
+}
+
+/* Metric cards */
+.metric-card {
+  @apply bg-white rounded-xl border border-slate-100 p-6 transition-all duration-300;
+}
+
+.metric-card:hover {
+  @apply shadow-lg;
+  transform: translateY(-2px);
+}
+
+.metric-value {
+  @apply text-3xl font-bold text-slate-900;
+}
+
+.metric-label {
+  @apply text-sm text-slate-500 mt-1;
+}
+
+/* Status indicators */
+.status-normal {
+  @apply bg-emerald-50 border-emerald-500 text-emerald-700;
+}
+
+.status-warning {
+  @apply bg-amber-50 border-amber-500 text-amber-700;
+}
+
+.status-critical {
+  @apply bg-red-50 border-red-500 text-red-700;
+}
+
+/* Chart container */
+.chart-container {
+  @apply bg-white rounded-xl border border-slate-100 p-6;
+}
+
+/* Navigation */
+.nav-item {
+  @apply flex items-center gap-3 px-4 py-3 rounded-lg text-slate-600 hover:bg-emerald-50 hover:text-emerald-600 transition-all;
+}
+
+.nav-item.active {
+  @apply bg-emerald-50 text-emerald-600 font-medium;
+}
+
+/* CCTV feed placeholder */
+.cctv-feed {
+  @apply bg-slate-800 rounded-xl aspect-video flex items-center justify-center relative overflow-hidden;
+}
+
+.cctv-feed .live-badge {
+  @apply absolute top-4 left-4 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded flex items-center gap-1;
+}
+
+.cctv-feed .timestamp {
+  @apply absolute bottom-4 right-4 bg-black/50 text-white text-xs px-2 py-1 rounded font-mono;
+}
+
+/* Alert styles */
+.alert-item {
+  @apply border-l-4 rounded-r-lg p-4 mb-3 transition-all;
+}
+
+.alert-normal {
+  @apply bg-emerald-50 border-emerald-500;
+}
+
+.alert-warning {
+  @apply bg-amber-50 border-amber-500;
+}
+
+.alert-critical {
+  @apply bg-red-50 border-red-500;
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .sidebar {
+    position: fixed;
+    z-index: 50;
+    height: 100vh;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+  }
+  
+  .sidebar.open {
+    transform: translateX(0);
+  }
+  
+  .mobile-overlay {
+    @apply fixed inset-0 bg-black/50 z-40;
+  }
+}
+
+/* Glassmorphism */
+.glass {
+  @apply backdrop-blur-md bg-white/80 border border-white/20;
+}
+
+/* Gradient backgrounds */
+.gradient-primary {
+  background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+}
+
+.gradient-surface {
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+}

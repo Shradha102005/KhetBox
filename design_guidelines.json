@@ -1,0 +1,153 @@
+{
+  "identity": {
+    "persona": "E1: The Anti-AI Designer",
+    "mission": "Create a farm monitoring dashboard that feels organic, trustworthy, and professional, avoiding the generic 'SaaS' look.",
+    "principles": [
+      "Fusion: Agriculture meets Precision Tech",
+      "Emotion: Trust, Growth, Clarity",
+      "Content: Data is the hero, but it must be readable outdoors",
+      "Spacing: Generous breathing room (2x standard)",
+      "Contrast: High contrast for outdoor visibility"
+    ]
+  },
+  "typography": {
+    "font_family": {
+      "headings": "Manrope, sans-serif",
+      "body": "Inter, sans-serif",
+      "mono": "JetBrains Mono, monospace"
+    },
+    "weights": {
+      "headings": "font-bold",
+      "subheadings": "font-semibold",
+      "body": "font-normal"
+    },
+    "sizes": {
+      "h1": "text-4xl md:text-5xl tracking-tight",
+      "h2": "text-3xl tracking-tight",
+      "h3": "text-2xl tracking-tight",
+      "body": "text-base leading-relaxed",
+      "small": "text-sm text-muted-foreground"
+    }
+  },
+  "colors": {
+    "theme": "light",
+    "palette": {
+      "primary": {
+        "DEFAULT": "#10B981",
+        "foreground": "#FFFFFF",
+        "hover": "#059669",
+        "active": "#047857"
+      },
+      "secondary": {
+        "DEFAULT": "#ECFDF5",
+        "foreground": "#065F46"
+      },
+      "background": {
+        "DEFAULT": "#F8FAFC",
+        "paper": "#FFFFFF",
+        "sidebar": "#FFFFFF"
+      },
+      "text": {
+        "primary": "#0F172A",
+        "secondary": "#64748B",
+        "muted": "#94A3B8"
+      },
+      "status": {
+        "success": "#10B981",
+        "warning": "#F59E0B",
+        "error": "#EF4444",
+        "info": "#3B82F6"
+      },
+      "chart": {
+        "temp": "#EF4444",
+        "humidity": "#3B82F6",
+        "battery": "#10B981",
+        "storage": "#F59E0B"
+      }
+    },
+    "gradients": {
+      "primary": "bg-gradient-to-br from-emerald-400 to-emerald-600",
+      "surface": "bg-gradient-to-b from-white to-slate-50"
+    }
+  },
+  "layout": {
+    "structure": "Sidebar Navigation (Left) + Top Header + Main Content Area",
+    "grid_system": {
+      "dashboard": "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6",
+      "charts": "grid grid-cols-1 lg:grid-cols-2 gap-6",
+      "storage": "grid grid-cols-1 md:grid-cols-2 gap-8"
+    },
+    "spacing": {
+      "container": "p-6 md:p-8 lg:p-10",
+      "card": "p-6",
+      "section": "py-12"
+    },
+    "sidebar": {
+      "width": "w-64",
+      "collapsed_width": "w-20",
+      "bg": "bg-white border-r border-slate-100"
+    }
+  },
+  "components": {
+    "cards": {
+      "style": "bg-white rounded-xl border border-slate-100 shadow-sm hover:shadow-md transition-all duration-300",
+      "header": "flex items-center justify-between mb-4",
+      "metric": "text-3xl font-bold text-slate-900"
+    },
+    "buttons": {
+      "primary": "bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg px-6 py-2.5 font-medium shadow-sm hover:shadow transition-all",
+      "secondary": "bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-lg px-6 py-2.5 font-medium transition-all",
+      "ghost": "text-slate-600 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg px-4 py-2 transition-all"
+    },
+    "charts": {
+      "library": "recharts",
+      "style": "minimalist, hide grid lines where possible, use curved lines (monotone)",
+      "tooltip": "custom styled tooltip with white bg and shadow-lg"
+    },
+    "alerts": {
+      "style": "border-l-4 rounded-r-lg p-4 mb-4",
+      "success": "bg-emerald-50 border-emerald-500 text-emerald-700",
+      "warning": "bg-amber-50 border-amber-500 text-amber-700",
+      "error": "bg-red-50 border-red-500 text-red-700"
+    }
+  },
+  "assets": {
+    "icons": "lucide-react",
+    "images": {
+      "hero_bg": "https://images.unsplash.com/photo-1715605569694-4cc47c9fb535?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3MjQyMTd8MHwxfHNlYXJjaHwxfHxzb2xhciUyMHBvd2VyZWQlMjBmYXJtJTIwc3RvcmFnZSUyMGNvbnRhaW5lcnxlbnwwfHx8fDE3NjY5Mjg3NzR8MA&ixlib=rb-4.1.0&q=85",
+      "storage_cold": "https://images.unsplash.com/photo-1669154777196-aca4d45b581a?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzB8MHwxfHNlYXJjaHwyfHxmcmVzaCUyMHZlZ2V0YWJsZXMlMjBpbiUyMHN0b3JhZ2UlMjBjcmF0ZXxlbnwwfHx8fDE3NjY5Mjg3NzZ8MA&ixlib=rb-4.1.0&q=85",
+      "storage_dry": "https://images.unsplash.com/photo-1696527785449-9a05db89c7f8?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzB8MHwxfHNlYXJjaHwzfHxmcmVzaCUyMHZlZ2V0YWJsZXMlMjBpbiUyMHN0b3JhZ2UlMjBjcmF0ZXxlbnwwfHx8fDE3NjY5Mjg3NzZ8MA&ixlib=rb-4.1.0&q=85"
+    }
+  },
+  "visual_enhancers": {
+    "glassmorphism": "backdrop-blur-md bg-white/80 border border-white/20 shadow-lg",
+    "shadows": {
+      "soft": "shadow-[0_2px_8px_rgba(0,0,0,0.04)]",
+      "medium": "shadow-[0_8px_24px_rgba(0,0,0,0.08)]",
+      "glow": "shadow-[0_0_16px_rgba(16,185,129,0.2)]"
+    },
+    "borders": "border border-slate-100"
+  },
+  "instructions_to_main_agent": [
+    "Implement the Sidebar with Lucide icons: LayoutDashboard, Cctv, Bell, FileText, Package.",
+    "Use Recharts for the 24h temperature and humidity trend charts.",
+    "Create a 'Bento' grid for the Dashboard: 4 key metric cards at top, followed by 2 large chart areas.",
+    "Mock the WebSocket connection using `setInterval` to update data every 8 seconds.",
+    "Ensure the 'Khetbox' logo is top-left, text-2xl, font-bold, text-emerald-500.",
+    "For CCTV, use 2 placeholder video feeds (gray rectangles with 'LIVE' badge and timestamp).",
+    "Capacity page must have a Pie Chart: 2000kg Total, 61% Used.",
+    "Alerts panel must show real-time notifications with color coding (Green/Yellow/Red).",
+    "Reports page needs a mock 'Export PDF' button that triggers a toast notification.",
+    "Use `sonner` for all toast notifications.",
+    "Ensure mobile responsiveness: Sidebar becomes a bottom nav or hamburger menu on small screens."
+  ],
+  "universal_guidelines": [
+    "Do NOT use generic gradients. Use solid colors or very subtle, purposeful gradients.",
+    "Do NOT center text by default. Left-align for readability.",
+    "Use generous padding (p-6, p-8) inside cards.",
+    "Ensure all interactive elements have hover states.",
+    "Add `data-testid` to all key elements.",
+    "Use `lucide-react` for all icons.",
+    "Follow the color palette strictly. Do not introduce new colors."
+  ]
+}
