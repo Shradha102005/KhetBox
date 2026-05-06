@@ -4,10 +4,37 @@ Simple script to test signup and login endpoints.
 """
 import subprocess
 import time
-import requests
 import json
 import sys
 from threading import Thread
+from urllib.request import Request, urlopen
+from urllib.error import URLError, HTTPError
+
+try:
+    import requests  # type: ignore
+except Exception:
+    requests = None
+
+
+def http_post_json(url: str, payload: dict, timeout: int = 5):
+    if requests is not None:
+        resp = requests.post(url, json=payload, timeout=timeout)
+        return resp.status_code, resp.json()
+
+    data = json.dumps(payload).encode("utf-8")
+    req = Request(url, data=data, headers={"Content-Type": "application/json"}, method="POST")
+    try:
+        with urlopen(req, timeout=timeout) as resp:
+            body = resp.read().decode("utf-8")
+            return resp.status, json.loads(body) if body else {}
+    except HTTPError as e:
+        body = e.read().decode("utf-8") if hasattr(e, "read") else ""
+        try:
+            return e.code, json.loads(body) if body else {"detail": body}
+        except Exception:
+            return e.code, {"detail": body}
+    except URLError as e:
+        raise RuntimeError(str(e))
 
 def run_server():
     """Run uvicorn server"""
@@ -32,13 +59,9 @@ signup_data = {
 
 print(f"\n=== Testing Signup for {email} ===")
 try:
-    resp = requests.post(
-        'http://127.0.0.1:8000/api/auth/signup',
-        json=signup_data,
-        timeout=5
-    )
-    print(f"Status: {resp.status_code}")
-    print(f"Response: {json.dumps(resp.json(), indent=2)}")
+    status, body = http_post_json('http://127.0.0.1:8000/api/auth/signup', signup_data, timeout=5)
+    print(f"Status: {status}")
+    print(f"Response: {json.dumps(body, indent=2)}")
 except Exception as e:
     print(f"Signup error: {e}")
 
@@ -50,13 +73,9 @@ login_data = {
 
 print(f"\n=== Testing Login for {email} ===")
 try:
-    resp = requests.post(
-        'http://127.0.0.1:8000/api/auth/login',
-        json=login_data,
-        timeout=5
-    )
-    print(f"Status: {resp.status_code}")
-    print(f"Response: {json.dumps(resp.json(), indent=2)}")
+    status, body = http_post_json('http://127.0.0.1:8000/api/auth/login', login_data, timeout=5)
+    print(f"Status: {status}")
+    print(f"Response: {json.dumps(body, indent=2)}")
 except Exception as e:
     print(f"Login error: {e}")
 

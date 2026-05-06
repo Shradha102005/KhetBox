@@ -15,6 +15,7 @@ import random
 import asyncio
 import json
 from io import BytesIO
+from urllib.parse import urlsplit, urlunsplit
 from reportlab.lib.pagesizes import letter, A4
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
@@ -22,20 +23,124 @@ from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, 
 from reportlab.lib import colors
 
 ROOT_DIR = Path(__file__).parent
-load_dotenv(ROOT_DIR / '.env')
 
-# MongoDB connection (default to local for easier local development)
-mongo_url = os.environ.get('MONGO_URL', 'mongodb://localhost:27017')
-db_name = os.environ.get('DB_NAME', 'test_database')
-client = AsyncIOMotorClient(mongo_url, serverSelectionTimeoutMS=5000)
-db = client[db_name]
+# Configure logging early so startup diagnostics are visible.
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
+# Load local dev env only if present. In hosted environments (Render/Vercel),
+# configuration should come from platform environment variables.
+dotenv_path = ROOT_DIR / ".env"
+if dotenv_path.exists():
+    load_dotenv(dotenv_path)
+
+
+def _env_bool(name: str, default: bool = False) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in {"1", "true", "yes", "y", "on"}
+
+
+def _sanitize_mongo_url(uri: str) -> str:
+    """Remove secrets from a MongoDB URI before logging."""
+    try:
+        parts = urlsplit(uri)
+        netloc = parts.netloc
+        if "@" in netloc:
+            userinfo, hostinfo = netloc.rsplit("@", 1)
+            if ":" in userinfo:
+                user, _pwd = userinfo.split(":", 1)
+                netloc = f"{user}:***@{hostinfo}"
+            else:
+                netloc = f"{userinfo}@{hostinfo}"
+        return urlunsplit((parts.scheme, netloc, parts.path, parts.query, parts.fragment))
+    except Exception:
+        return "<invalid-mongo-uri>"
+
+
+# App + router
 app = FastAPI(title="Khetbox Dashboard API")
 api_router = APIRouter(prefix="/api")
 
-# Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
+
+# Mongo settings are read from environment at startup.
+DEFAULT_MONGO_URL = "mongodb://localhost:27017"
+DEFAULT_DB_NAME = "test_database"
+
+
+def _default_allow_mock_auth(mongo_url: str) -> bool:
+    # If you're running against a remote database, do not silently fall back
+    # to in-memory users. For local development, mock auth can be convenient.
+    local_prefixes = ("mongodb://localhost", "mongodb://127.0.0.1")
+    return mongo_url.startswith(local_prefixes)
+
+
+def _get_db():
+    db = getattr(app.state, "db", None)
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database unavailable")
+    return db
+
+
+@app.on_event("startup")
+async def _startup() -> None:
+    mongo_url = os.getenv("MONGO_URL", DEFAULT_MONGO_URL)
+    db_name = os.getenv("DB_NAME", DEFAULT_DB_NAME)
+    allow_mock_auth = _env_bool("ALLOW_MOCK_AUTH", default=_default_allow_mock_auth(mongo_url))
+
+    if mongo_url != mongo_url.strip():
+        logger.warning("MONGO_URL has leading/trailing whitespace")
+        mongo_url = mongo_url.strip()
+
+    try:
+        authority = urlsplit(mongo_url).netloc
+        if authority.count("@") > 1:
+            logger.warning("MONGO_URL appears to contain an unescaped '@' in credentials; URL-encode it")
+    except Exception:
+        # If the URL can't be parsed, the ping below will surface the actual error.
+        pass
+
+    app.state.allow_mock_auth = allow_mock_auth
+    app.state.mongo_url_sanitized = _sanitize_mongo_url(mongo_url)
+    app.state.db_name = db_name
+
+    # Build client. If URI is invalid, keep app up (so /health works) but mark DB unavailable.
+    try:
+        app.state.mongo_client = AsyncIOMotorClient(mongo_url, serverSelectionTimeoutMS=5000)
+        app.state.db = app.state.mongo_client[db_name]
+    except Exception as e:
+        app.state.mongo_client = None
+        app.state.db = None
+        app.state.mongo_ready = False
+        logger.warning("MongoDB client init failed: %s", e)
+        return
+
+    logger.info(
+        "Mongo settings: db=%s uri=%s allow_mock_auth=%s",
+        db_name,
+        app.state.mongo_url_sanitized,
+        allow_mock_auth,
+    )
+
+    try:
+        await app.state.mongo_client.admin.command("ping")
+        app.state.mongo_ready = True
+        logger.info("MongoDB ping OK")
+    except Exception as e:
+        app.state.mongo_ready = False
+        # Keep app running (so /health still works), but make DB usage explicit.
+        logger.warning("MongoDB ping failed: %s", e)
+
+
+@app.on_event("shutdown")
+async def _shutdown() -> None:
+    client = getattr(app.state, "mongo_client", None)
+    try:
+        if client is not None:
+            client.close()
+    except Exception:
+        logger.exception("Failed to close Mongo client")
 
 # Sensor state (simulated IoT data)
 class SensorState:
@@ -272,6 +377,8 @@ async def login(request: LoginRequest):
     if pw_bytes_len > 72:
         raise HTTPException(status_code=400, detail="Password too long (max 72 bytes)")
     
+    db = _get_db()
+
     # Prefer database-backed users
     try:
         db_user = await db.users.find_one({"email": request.email})
@@ -295,8 +402,13 @@ async def login(request: LoginRequest):
         raise
     except Exception as e:
         logger.warning(f"DB login check failed: {e}")
+        if not getattr(app.state, "allow_mock_auth", False):
+            raise HTTPException(status_code=503, detail="Database unavailable")
 
     # Fallback: check in-memory mock users (supports plaintext or hashed)
+    if not getattr(app.state, "allow_mock_auth", False):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+
     user = MOCK_USERS.get(request.email)
     if user:
         stored = user.get("password", "")
@@ -329,15 +441,22 @@ async def signup(user: User):
     if user.email in MOCK_USERS:
         raise HTTPException(status_code=400, detail="User already exists")
 
-    # Check DB for existing user. If DB is unreachable, fall back to in-memory mock store.
+    db = _get_db()
+    allow_mock_auth = getattr(app.state, "allow_mock_auth", False)
     db_available = True
+
+    # Check DB for existing user.
     try:
         existing = await db.users.find_one({"email": user.email})
         if existing:
             raise HTTPException(status_code=400, detail="User already exists")
+    except HTTPException:
+        raise
     except Exception as e:
+        logger.warning(f"DB check for existing user failed: {e}")
+        if not allow_mock_auth:
+            raise HTTPException(status_code=503, detail="Database unavailable")
         db_available = False
-        logger.warning(f"DB check for existing user failed, falling back to mock users: {e}")
 
     # Hash password and insert into DB
     try:
@@ -356,20 +475,29 @@ async def signup(user: User):
 
         if db_available:
             try:
-                await db.users.insert_one({
-                    "email": user.email,
-                    "password": hashed_pwd,
-                    "role": user.role,
-                    "name": user.name or user.email
-                })
+                await db.users.insert_one(
+                    {
+                        "email": user.email,
+                        "password": hashed_pwd,
+                        "role": user.role,
+                        "name": user.name or user.email,
+                    }
+                )
                 logger.info(f"Created user in DB: {user.email}")
             except Exception as e:
-                # If insert fails, log but continue to add to mock store so signup can succeed locally
-                logger.warning(f"DB insert failed, storing user only in mock users: {e}")
+                logger.warning(f"DB insert failed: {e}")
+                if not allow_mock_auth:
+                    raise HTTPException(status_code=503, detail="Database unavailable")
                 db_available = False
 
-        # Always add to in-memory mock users for quick local testing (and when DB is down)
-        MOCK_USERS[user.email] = {"password": hashed_pwd, "role": user.role, "name": user.name or user.email, "hashed": True}
+        if not db_available and allow_mock_auth:
+            MOCK_USERS[user.email] = {
+                "password": hashed_pwd,
+                "role": user.role,
+                "name": user.name or user.email,
+                "hashed": True,
+            }
+            return {"success": True, "message": "User created (mock)"}
 
         return {"success": True, "message": "User created"}
     except HTTPException:
@@ -388,6 +516,7 @@ async def get_status():
     
     # Update MongoDB with latest sensor data
     try:
+        db = _get_db()
         sensor_doc = sensor_state.to_dict()
         await db.sensors.update_one(
             {"device_id": "khetbox-001"},
@@ -402,6 +531,7 @@ async def get_status():
 @api_router.get("/storage")
 async def get_storage():
     try:
+        db = _get_db()
         # Get storage units from MongoDB
         storage_list = await db.storage.find({"device_id": "khetbox-001"}).to_list(length=10)
         
@@ -436,6 +566,7 @@ async def get_storage():
 @api_router.get("/alerts")
 async def get_alerts():
     try:
+        db = _get_db()
         # Get alerts from MongoDB
         alerts_list = await db.alerts.find({"device_id": "khetbox-001"}).sort("timestamp", -1).to_list(length=100)
         
@@ -470,6 +601,7 @@ async def get_alerts():
 @api_router.get("/reports/daily")
 async def get_daily_reports():
     try:
+        db = _get_db()
         today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
         
         # Get report from MongoDB
@@ -542,6 +674,7 @@ async def get_daily_reports():
 @api_router.get("/cctv/streams")
 async def get_cctv_streams():
     try:
+        db = _get_db()
         # Get CCTV streams from MongoDB
         streams = await db.cctv_streams.find({"device_id": "khetbox-001"}).to_list(length=10)
         
@@ -584,6 +717,7 @@ async def get_cctv_streams():
 async def export_report_pdf():
     """Export daily report as PDF"""
     try:
+        db = _get_db()
         today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
         
         # Get report from MongoDB
@@ -696,6 +830,8 @@ async def export_report_pdf():
             headers={"Content-Disposition": f"attachment; filename={filename}"}
         )
     
+    except HTTPException:
+        raise
     except Exception as e:
         logger.exception(f"Error generating PDF: {e}")
         raise HTTPException(status_code=500, detail=f"PDF generation failed: {str(e)}")
@@ -753,16 +889,3 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-@app.on_event("startup")
-async def startup_db_check():
-    try:
-        # Try a lightweight command to ensure the DB is reachable
-        await client.admin.command('ping')
-        logger.info(f"Connected to MongoDB at {mongo_url}, DB: {db_name}")
-    except Exception as e:
-        logger.warning(f"Could not connect to MongoDB at {mongo_url}: {e}")
-
-@app.on_event("shutdown")
-async def shutdown_db_client():
-    client.close()
