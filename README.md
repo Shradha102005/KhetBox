@@ -2,25 +2,26 @@
 
 ## 🚀 Deployment Guide
 
-### Option 1: Deploy Frontend Only to Vercel (Recommended)
+### Option 1: Deploy Backend on Railway and Frontend on Vercel
 
-The **easiest way** is to deploy **frontend** and **backend separately**:
+The cleanest setup is to deploy the **backend** and **frontend** as two separate services:
 
-#### 1. Deploy Backend to Railway/Render
-- **Railway** (Recommended): https://railway.app
-   - Connect your GitHub repo
-   - Use the repo root so Railway picks up the root `Dockerfile`
-   - Add environment variables (MONGO_URL, DB_NAME, CORS_ORIGINS)
+#### 1. Deploy Backend to Railway
+- **Railway**: https://railway.app
+   - Create a service from this repo
+   - Set the service root directory to `backend`
+   - Railway will use [backend/Dockerfile](backend/Dockerfile)
+   - Add environment variables: `MONGO_URL`, `DB_NAME`, `CORS_ORIGINS`
    - Deploy ✅
-  
+
 #### 2. Deploy Frontend to Vercel
 - Go to https://vercel.com
-- Import your repo
-- **Root Directory**: Set to `frontend`
+- Import the same repo as a separate project
+- **Root Directory**: set to `frontend`
 - **Build Command**: `npm run build`
 - **Output Directory**: `build`
 - Add environment variable:
-  - `REACT_APP_API_URL` = `https://your-backend.railway.app`
+   - `REACT_APP_API_URL` = `https://your-backend.railway.app`
 - Deploy ✅
 
 ### Option 2: Deploy Backend to Vercel
