@@ -397,6 +397,12 @@ async def health_check():
         "status": "ok",
         "mongo_ready": bool(getattr(app.state, "mongo_ready", False)),
         "db": getattr(app.state, "db_name", None),
+        "commit": os.getenv("RENDER_GIT_COMMIT") or os.getenv("VERCEL_GIT_COMMIT_SHA") or os.getenv("GIT_COMMIT") or None,
+        "mongo": {
+            "host": (getattr(app.state, "mongo_public_info", {}) or {}).get("host"),
+            "username": (getattr(app.state, "mongo_public_info", {}) or {}).get("username"),
+            "authSource": (getattr(app.state, "mongo_public_info", {}) or {}).get("authSource"),
+        },
     }
 
 @api_router.get("/")
