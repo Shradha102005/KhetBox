@@ -8,10 +8,10 @@ The **easiest way** is to deploy **frontend** and **backend separately**:
 
 #### 1. Deploy Backend to Railway/Render
 - **Railway** (Recommended): https://railway.app
-  - Connect your GitHub repo
-  - Select the `backend` folder
-  - Add environment variables (MONGO_URL, DB_NAME, CORS_ORIGINS)
-  - Deploy ✅
+   - Connect your GitHub repo
+   - Use the repo root so Railway picks up the root `Dockerfile`
+   - Add environment variables (MONGO_URL, DB_NAME, CORS_ORIGINS)
+   - Deploy ✅
   
 #### 2. Deploy Frontend to Vercel
 - Go to https://vercel.com
