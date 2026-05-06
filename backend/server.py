@@ -249,6 +249,14 @@ def generate_historical_data():
     return data
 
 # Routes
+@app.get("/")
+async def home():
+    return {"message": "KhetBox API is running", "docs": "/docs", "api_root": "/api"}
+
+@app.get("/health")
+async def health_check():
+    return {"status": "ok"}
+
 @api_router.get("/")
 async def root():
     return {"message": "Khetbox Dashboard API", "version": "1.0.0"}
