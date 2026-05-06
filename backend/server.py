@@ -15,7 +15,7 @@ import random
 import asyncio
 import json
 from io import BytesIO
-from urllib.parse import urlsplit, urlunsplit
+from urllib.parse import urlsplit, urlunsplit, parse_qs
 from reportlab.lib.pagesizes import letter, A4
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
@@ -57,6 +57,30 @@ def _sanitize_mongo_url(uri: str) -> str:
         return urlunsplit((parts.scheme, netloc, parts.path, parts.query, parts.fragment))
     except Exception:
         return "<invalid-mongo-uri>"
+
+
+def _mongo_public_info(uri: str) -> dict:
+    """Return non-secret Mongo connection info for debugging."""
+    try:
+        parts = urlsplit(uri)
+        netloc = parts.netloc
+        username = None
+        host = netloc
+        if "@" in netloc:
+            userinfo, hostinfo = netloc.rsplit("@", 1)
+            host = hostinfo
+            username = userinfo.split(":", 1)[0] if userinfo else None
+        query = parse_qs(parts.query)
+        auth_source = query.get("authSource", [None])[0]
+        return {
+            "scheme": parts.scheme,
+            "username": username,
+            "host": host,
+            "authSource": auth_source,
+            "has_db_path": bool(parts.path and parts.path != "/"),
+        }
+    except Exception:
+        return {"scheme": None, "username": None, "host": None, "authSource": None, "has_db_path": None}
 
 
 # App + router
@@ -104,6 +128,7 @@ async def _startup() -> None:
     app.state.allow_mock_auth = allow_mock_auth
     app.state.mongo_url_sanitized = _sanitize_mongo_url(mongo_url)
     app.state.db_name = db_name
+    app.state.mongo_public_info = _mongo_public_info(mongo_url)
 
     # Build client. If URI is invalid, keep app up (so /health works) but mark DB unavailable.
     try:
@@ -121,6 +146,14 @@ async def _startup() -> None:
         db_name,
         app.state.mongo_url_sanitized,
         allow_mock_auth,
+    )
+    logger.info(
+        "Mongo uri info: scheme=%s username=%s host=%s authSource=%s has_db_path=%s",
+        app.state.mongo_public_info.get("scheme"),
+        app.state.mongo_public_info.get("username"),
+        app.state.mongo_public_info.get("host"),
+        app.state.mongo_public_info.get("authSource"),
+        app.state.mongo_public_info.get("has_db_path"),
     )
 
     try:
@@ -360,7 +393,11 @@ async def home():
 
 @app.get("/health")
 async def health_check():
-    return {"status": "ok"}
+    return {
+        "status": "ok",
+        "mongo_ready": bool(getattr(app.state, "mongo_ready", False)),
+        "db": getattr(app.state, "db_name", None),
+    }
 
 @api_router.get("/")
 async def root():
